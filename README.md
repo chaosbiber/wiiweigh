@@ -10,19 +10,57 @@ This is essentially a mashup of existing projects in a try to get a connection a
 - bluez example/test files in https://git.kernel.org/cgit/bluetooth/bluez.git/tree/test, nominally test-adapter, test-device and bluezutils.py
 - libs: https://github.com/dvdhrm/xwiimote and https://github.com/dvdhrm/xwiimote-bindings
 
-## requirements
+## main requirements
 
 - hid_wiimote kernel module with xwiimote and xwiimote-bindings
-- bus-python
+- python-dbus
 - bluez 5
+
+## caveats
+Adopted and tested on a Raspberry with Python 2. If Python 3 is the default, either the scripts need an update, or the installation process is slightly different.
+
+On a test with Arch Linux and a newer Bluez stack I couldn't sucessfully disconnect the Balance Board from the PC-side. On the latest Raspbian version that's not a problem (yet).
 
 ## howto
 Install bluez, bluez-firmware and python-bluez.
-I've built xwiimote and bindings from source and installed both to /usr/local, because the debian xwiimote package did not harmonize with the bindings-source.
+I've built xwiimote and bindings from source, because the debian xwiimote package did not harmonize with the bindings-source.
+
+Step-by-step procedure on Raspbian (tested on a Raspberry Pi 2 with Bluetooth dongle, Raspian lite from 04/2018)
+
+```bash
+sudo apt-get update && sudo apt-get upgrade
+# on raspbian already installed packages:
+# sudo apt-get install build-essential bluez
+sudo apt-get install python-dbus git autoconf libtool libudev-dev \
+                     libncurses5-dev swig python-dev python-numpy
+python -V
+# should return Python 2.7.x
+
+mkdir src && cd src
+git clone https://github.com/dvdhrm/xwiimote.git
+git clone https://github.com/dvdhrm/xwiimote-bindings.git
+git clone https://github.com/chaosbiber/wiiweigh.git
+cd xwiimote
+./autogen.sh
+make
+sudo make install
+cd ../xwiimote-bindings
+./autogen.sh
+make
+sudo make install
+cd ../wiiweigh
+
+sudo gpasswd -a pi bluetooth # add user pi to bluetooth group
+# reboot or the wiiweight script will throw an exception
+# when trying to disconnect as normal user
+sudo bluetoothctl
+# continue with bluetooth setup below
+```
 
 The following procedure should only be required once, the sync survives host reboots. Just try if after the disconnect command you can connect by simply pushing the front button of the board, if not, delete the pairing and try again. The hid_wiimote module lights the blue led of the button when loaded, when it's not the led keeps blinking.
 
 Start `bluetoothctl`
+
 ```
 power on
 agent on
@@ -35,6 +73,8 @@ connect <MAC of the wiimote>
 
 trust <MAC of the wiimote>
 disconnect <MAC of the wiimote>
+scan off
+exit
 ```
 (From https://wiki.archlinux.org/index.php/XWiimote)
 exit with `exit` or Ctrl+D
